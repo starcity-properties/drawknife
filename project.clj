@@ -1,4 +1,4 @@
-(defproject starcity/drawknife "0.2.0"
+(defproject starcity/drawknife "1.0.0-SNAPSHOT"
   :description "Logging configuration & middleware for Starcity projects."
   :url "https://github.com/starcity-properties/drawknife"
   :license {:name "Eclipse Public License"
