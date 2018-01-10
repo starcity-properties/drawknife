@@ -1,6 +1,6 @@
 (ns drawknife.core
   (:require [cheshire.core :as json]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [taoensso.timbre :as timbre]
             [taoensso.timbre.appenders.3rd-party.rolling :as rolling]
             [taoensso.timbre.appenders.core :as appenders]))
