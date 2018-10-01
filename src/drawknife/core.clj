@@ -6,10 +6,17 @@
             [taoensso.timbre.appenders.core :as appenders]))
 
 
-(defn- appender-config [appender filename]
+
+;; =============================================================================
+;; Configurations
+;; =============================================================================
+
+
+(defn- appender-config [appender & [{:keys [filename]}]]
   (case appender
-    :spit    {:spit (appenders/spit-appender {:fname filename})}
-    :rolling {:rolling (rolling/rolling-appender {:path filename})}))
+    :spit {:spit (appenders/spit-appender {:fname filename})}
+    :rolling {:rolling (rolling/rolling-appender {:path filename})}
+    {:println (appenders/println-appender {:stream :auto})}))
 
 
 (s/def ::event-vargs
@@ -21,16 +28,16 @@
   [data event params]
   (try
     (assoc data :vargs
-           [(-> {:event event}
-                (merge (when-let [err (:?err data)] {:error-data (or (ex-data err) :none)})
-                       params)
-                json/generate-string)])
+                [(-> {:event event}
+                     (merge (when-let [err (:?err data)] {:error-data (or (ex-data err) :none)})
+                            params)
+                     json/generate-string)])
     (catch Throwable t
       (timbre/warn t "Error encountered while attempting to encode vargs.")
       data)))
 
 
-(defn wrap-event-format
+(defn- wrap-event-format
   "Middleware that transforms the user's log input into a JSON
   string with an `event` key. This is used to make search effective in LogDNA.
 
@@ -44,9 +51,74 @@
     data))
 
 
-(defn configuration
+(defn- configuration
   "The timbre configuration."
-  [log-level appender filename]
+  [log-level appender & [filename]]
   {:level      log-level
    :middleware [wrap-event-format]
-   :appenders  (appender-config appender filename)})
+   :appenders  (appender-config appender {:filename filename})})
+
+
+;; =============================================================================
+;; Logger machinery
+;; =============================================================================
+
+
+(defprotocol ILogger
+  (-log [this msg]))
+
+
+(defn timbre-logger [log-level appender filename]
+  (reify ILogger
+    (-log [_ {:keys [level id data]}]
+      (timbre/with-config
+        (merge timbre/example-config
+               (configuration log-level appender filename))
+        (timbre/log level (keyword id) {:data data})))))
+
+
+(defn with [logger f]
+  (reify ILogger
+    (-log [_ msg]
+      (let [m (f (:data msg))]
+        (-log logger (assoc msg :data m))))))
+
+
+;; =============================================================================
+;; Helpers
+;; =============================================================================
+
+
+(defn- log! [level logger id data]
+  (-log logger {:id     id
+                :level  level
+                :data   data
+                :millis (System/currentTimeMillis)}))
+
+(s/fdef log!
+  :args (s/cat :level keyword?
+               :logger #(satisfies? ILogger %)
+               :id (s/and keyword? #(some? (namespace %)))
+               :data map?))
+
+
+;; =============================================================================
+;; Logging
+;; =============================================================================
+
+
+(defn debug [logger id data]
+  (log! :debug logger id data))
+
+
+(defn info [logger id data]
+  (log! :info logger id data))
+
+
+(defn warn [logger id data]
+  (log! :warn logger id data))
+
+
+(defn error [logger id data]
+  (log! :error logger id data))
+
