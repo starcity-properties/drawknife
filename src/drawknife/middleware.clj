@@ -25,8 +25,12 @@
 
   Note: This is needed while the requests is going through the middlewares to have the context
   be included if exceptions would happen. Make sure to use wrap-logger-deref before request
-  is leaving the middlewares and handed off to routes. "
+  is leaving the middlewares and handed off to routes.  "
   [handler]
   (fn [{:keys [deps] :as req}]
     (let [logger (:logger deps (log/timbre-logger :info :println nil))]
       (handler (assoc-in req [:deps :logger] (atom logger))))))
+
+
+(defn something []
+  (log/info {} ::id {:a 1} (ex-info "test" {})))
