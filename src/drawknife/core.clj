@@ -64,14 +64,19 @@
 ;; =============================================================================
 
 
-(defn timbre-logger [log-level appender filename]
+(defn timbre-logger
+  "Setup timbre logging with provided configuration."
+  [log-level appender filename]
   (timbre/merge-config!
     (configuration log-level appender filename))
   {})
 
 
-(defn with [logger f]
-  (update logger :data f))
+(defn with
+  "Add more context to an existing log context 'log-ctx' by calling 'f' on the
+   content of the given log context."
+  [log-ctx f]
+  (update log-ctx :data f))
 
 
 ;; =============================================================================
@@ -79,12 +84,19 @@
 ;; =============================================================================
 
 
-(defmacro log! [level logger id data & [{:keys [throwable]}]]
-  (let [millis   (System/currentTimeMillis)
-        log-data (merge logger (assoc data :millis millis))]
-    (if (some? throwable)
-      `(timbre/log ~level ~throwable ~id ~log-data)
-      `(timbre/log ~level ~id ~log-data))))
+(defmacro log!
+  "Log 'data' via timbre on a specific 'level' and with context 'log-ctx', where 'id'
+  should be a namespace'd keyword and 'data' is the information to log. If 'log-ctx'
+  is nil, 'data' will be the only output. Potential exception is expected as the
+  first element of 'args'."
+  [level log-ctx id data & args]
+  `(let [level#     ~level
+         id#        ~id
+         throwable# (first ~args)
+         log-data#  (merge ~log-ctx (assoc ~data :millis (System/currentTimeMillis)))]
+     (if (some? throwable#)
+       (timbre/log level# throwable# id# log-data#)
+       (timbre/log level# id# log-data#))))
 
 
 ;; =============================================================================
@@ -92,17 +104,7 @@
 ;; =============================================================================
 
 
-(defmacro debug [logger id data & [throwable]]
-  `(log! :debug ~logger ~id ~data ~{:throwable throwable}))
-
-
-(defmacro info [logger id data & [throwable]]
-  `(log! :info ~logger ~id ~data ~{:throwable throwable}))
-
-
-(defmacro warn [logger id data & [throwable]]
-  `(log! :warn ~logger ~id ~data ~{:throwable throwable}))
-
-
-(defmacro error [logger id data & [throwable]]
-  `(log! :error ~logger ~id ~data ~{:throwable throwable}))
+(defmacro debug [log-ctx id data & args] `(log! :debug ~log-ctx ~id ~data ~@args))
+(defmacro info [log-ctx id data & args] `(log! :info ~log-ctx ~id ~data ~@args))
+(defmacro warn [log-ctx id data & args] `(log! :warn ~log-ctx ~id ~data ~@args))
+(defmacro error [log-ctx id data & args] `(log! :error ~log-ctx ~id ~data ~@args))
