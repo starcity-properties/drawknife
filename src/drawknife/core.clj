@@ -90,7 +90,6 @@
   is nil, 'data' will be the only output. Potential exception is expected as the
   first element of 'args'."
   [level logger id data & args]
-  (println logger)
   `(let [level#     ~level
          id#        ~id
          log-ctx#   ~logger
