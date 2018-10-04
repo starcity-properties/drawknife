@@ -5,7 +5,8 @@
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [cheshire "5.7.1"]
-                 [com.taoensso/timbre "4.10.0"]]
+                 [com.taoensso/timbre "4.10.0"]
+                 [nano-id "0.9.3"]]
 
   :plugins [[s3-wagon-private "1.2.0"]]
 

@@ -75,8 +75,8 @@
 (defn with
   "Add more context to an existing log context 'log-ctx' by calling 'f' on the
    content of the given log context."
-  [log-ctx f]
-  (update log-ctx :data f))
+  [log-ctx f & args]
+  (apply update log-ctx :data f args))
 
 
 ;; =============================================================================
@@ -92,7 +92,7 @@
   [level log-ctx id data & args]
   `(let [level#     ~level
          id#        ~id
-         throwable# (first ~args)
+         throwable# ~(first args)
          log-data#  (merge ~log-ctx (assoc ~data :millis (System/currentTimeMillis)))]
      (if (some? throwable#)
        (timbre/log level# throwable# id# log-data#)
