@@ -54,9 +54,11 @@
 (defn- configuration
   "The timbre configuration."
   [log-level appender & [filename]]
-  {:level      log-level
-   :middleware [wrap-event-format]
-   :appenders  (appender-config appender {:filename filename})})
+  (merge
+    (update timbre/example-config :appenders dissoc :println)
+    {:level      log-level
+     :middleware [wrap-event-format]
+     :appenders  (appender-config appender {:filename filename})}))
 
 
 ;; =============================================================================
@@ -67,16 +69,14 @@
 (defn timbre-logger
   "Setup timbre logging with provided configuration."
   [log-level appender filename]
-  (timbre/merge-config!
-    (configuration log-level appender filename))
-  {})
+  {:config (configuration log-level appender filename)})
 
 
 (defn with
-  "Add more context to an existing log context 'log-ctx' by calling 'f' on the
+  "Add more context to an existing log context 'logger' by calling 'f' on the
    content of the given log context."
-  [log-ctx f & args]
-  (apply update log-ctx :data f args))
+  [logger f & args]
+  (apply update logger :data f args))
 
 
 ;; =============================================================================
@@ -85,18 +85,24 @@
 
 
 (defmacro log!
-  "Log 'data' via timbre on a specific 'level' and with context 'log-ctx', where 'id'
+  "Log 'data' via timbre on a specific 'level' and with context 'logger', where 'id'
   should be a namespace'd keyword and 'data' is the information to log. If 'log-ctx'
   is nil, 'data' will be the only output. Potential exception is expected as the
   first element of 'args'."
-  [level log-ctx id data & args]
+  [level logger id data & args]
+  (println logger)
   `(let [level#     ~level
          id#        ~id
+         log-ctx#   ~logger
          throwable# ~(first args)
-         log-data#  (merge ~log-ctx (assoc ~data :millis (System/currentTimeMillis)))]
-     (if (some? throwable#)
-       (timbre/log level# throwable# id# log-data#)
-       (timbre/log level# id# log-data#))))
+         config#    (:config log-ctx#)
+         log-data#  (merge (:data log-ctx#)
+                           (assoc ~data :millis (System/currentTimeMillis)))]
+     (timbre/with-config
+       config#
+       (if (some? throwable#)
+         (timbre/log level# throwable# id# log-data#)
+         (timbre/log level# id# log-data#)))))
 
 
 ;; =============================================================================
