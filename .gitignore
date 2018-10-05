@@ -19,3 +19,5 @@ figwheel_server.log
 .DS_Store
 node_modules/
 data/
+.idea/
+drawknife.iml
