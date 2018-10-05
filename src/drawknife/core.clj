@@ -1,6 +1,7 @@
 (ns drawknife.core
   (:require [cheshire.core :as json]
             [clojure.spec.alpha :as s]
+            [clojure.string :as string]
             [taoensso.timbre :as timbre]
             [taoensso.timbre.appenders.3rd-party.rolling :as rolling]
             [taoensso.timbre.appenders.core :as appenders]))
@@ -23,6 +24,10 @@
          :params map?))
 
 
+(defn- kebab->snake [s]
+  (string/replace (reduce str (drop 1 (str s))) #"-" "_"))
+
+
 (defn- event-vargs
   [data event params]
   (try
@@ -31,7 +36,7 @@
                      (merge (when-let [err (:?err data)]
                               {:error-data (or (ex-data err) :none)})
                             params)
-                     json/generate-string)])
+                     (json/generate-string {:key-fn kebab->snake}))])
     (catch Throwable t
       (timbre/warn t "Error encountered while attempting to encode vargs.")
       data)))
