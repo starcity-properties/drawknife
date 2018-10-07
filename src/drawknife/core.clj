@@ -61,9 +61,12 @@
   [log-level appender & [filename]]
   (merge
     (update timbre/example-config :appenders dissoc :println)
-    {:level      log-level
-     :middleware [wrap-event-format]
-     :appenders  (appender-config appender {:filename filename})}))
+    {:level          log-level
+     :timestamp-opts {:pattern  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+                      :locale   :jvm-default
+                      :timezone :utc}
+     :middleware     [wrap-event-format]
+     :appenders      (appender-config appender {:filename filename})}))
 
 
 ;; =============================================================================
