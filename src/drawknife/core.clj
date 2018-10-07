@@ -24,8 +24,11 @@
          :params map?))
 
 
-(defn- kebab->snake [s]
-  (string/replace (reduce str (drop 1 (str s))) #"-" "_"))
+(defn- kebab->snake
+  "To snake case, excluding the : character from a keyword."
+  [s]
+  (-> (string/replace (str s) #":(.)" "$1")
+      (string/replace #"[-/.]" "_")))
 
 
 (defn- event-vargs
