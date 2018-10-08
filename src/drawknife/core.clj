@@ -24,8 +24,11 @@
          :params map?))
 
 
-(defn- kebab->snake [s]
-  (string/replace (reduce str (drop 1 (str s))) #"-" "_"))
+(defn- kebab->snake
+  "To snake case, excluding the : character from a keyword."
+  [s]
+  (-> (string/replace (str s) #":(.)" "$1")
+      (string/replace #"[-/.]" "_")))
 
 
 (defn- event-vargs
@@ -61,9 +64,12 @@
   [log-level appender & [filename]]
   (merge
     (update timbre/example-config :appenders dissoc :println)
-    {:level      log-level
-     :middleware [wrap-event-format]
-     :appenders  (appender-config appender {:filename filename})}))
+    {:level          log-level
+     :timestamp-opts {:pattern  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+                      :locale   :jvm-default
+                      :timezone :utc}
+     :middleware     [wrap-event-format]
+     :appenders      (appender-config appender {:filename filename})}))
 
 
 ;; =============================================================================
