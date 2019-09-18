@@ -153,8 +153,12 @@
 
 
 (defn timbre-json-println-logger
-  [log-level appenders]
-  (let [config (-> (configuration log-level)
-                 (assoc :output-fn (output-json))
-                 (update :appenders concat appenders))]
+  [log-level & [{:keys [appenders filename]}]]
+  (let [app-configs (reduce (fn [m k]
+                              (assoc m k (appender-config % {:filename filename})))
+                      {}
+                      appenders)
+        config      (-> (configuration log-level)
+                      (assoc :output-fn (output-json))
+                      (update :appenders merge app-configs))]
     {:config config}))
