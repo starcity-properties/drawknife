@@ -106,7 +106,7 @@
             :level     (clojure.string/upper-case (name level))
             :ns        (or ?ns-str ?file "?")
             :line      (or ?line "?")
-            :msg       (force msg_)}
+            :msg       (json/parse-string (force msg_))}
 
            (and (not no-stacktrace?) (some? ?err))
            (merge (timbre/stacktrace ?err))))))))
@@ -155,7 +155,7 @@
 (defn timbre-json-println-logger
   [log-level & [{:keys [appenders filename]}]]
   (let [app-configs (reduce (fn [m k]
-                              (assoc m k (appender-config % {:filename filename})))
+                              (merge m (appender-config k {:filename filename})))
                       {}
                       appenders)
         config      (-> (configuration log-level)
