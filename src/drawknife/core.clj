@@ -109,7 +109,7 @@
             :msg       (json/parse-string (force msg_))}
 
            (and (not no-stacktrace?) (some? ?err))
-           (merge (timbre/stacktrace ?err))))))))
+           (merge {:stacktrace (timbre/stacktrace ?err)})))))))
 
 (defmacro log!
   "Log 'data' via timbre on a specific 'level' and with context 'logger', where 'id'
