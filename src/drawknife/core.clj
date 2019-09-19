@@ -21,14 +21,14 @@
 
 (s/def ::event-vargs
   (s/cat :event keyword?
-         :params map?))
+    :params map?))
 
 
 (defn- kebab->snake
   "To snake case, excluding the : character from a keyword."
   [s]
   (-> (string/replace (str s) #":(.)" "$1")
-      (string/replace #"[-/.]" "_")))
+    (string/replace #"[-/.]" "_")))
 
 
 (defn- event-vargs
@@ -36,10 +36,10 @@
   (try
     (assoc data :vargs
                 [(-> {:event event}
-                     (merge (when-let [err (:?err data)]
-                              {:error-data (or (ex-data err) :none)})
-                            params)
-                     (json/generate-string {:key-fn kebab->snake}))])
+                   (merge (when-let [err (:?err data)]
+                            {:error-data (or (ex-data err) :none)})
+                     params)
+                   (json/generate-string {:key-fn kebab->snake}))])
     (catch Throwable t
       (timbre/warn t "Error encountered while attempting to encode vargs.")
       data)))
@@ -61,26 +61,23 @@
 
 (defn- configuration
   "The timbre configuration."
-  [log-level appender & [filename]]
-  (merge
-    (update timbre/example-config :appenders dissoc :println)
-    {:level          log-level
-     :timestamp-opts {:pattern  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-                      :locale   :jvm-default
-                      :timezone :utc}
-     :middleware     [wrap-event-format]
-     :appenders      (appender-config appender {:filename filename})}))
+  [log-level & [appender filename]]
+  (let [custom {:level          log-level
+                :timestamp-opts {:pattern  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+                                 :locale   :jvm-default
+                                 :timezone :utc}
+                :middleware     [wrap-event-format]}]
+    (cond->
+      (merge (update timbre/example-config :appenders dissoc :println)
+        custom)
+
+      (some? appender)
+      (assoc :appenders (appender-config appender {:filename filename})))))
 
 
 ;; =============================================================================
 ;; Logger machinery
 ;; =============================================================================
-
-
-(defn timbre-logger
-  "Setup timbre logging with provided configuration."
-  [log-level appender filename]
-  {:config (configuration log-level appender filename)})
 
 
 (defn with
@@ -95,6 +92,25 @@
 ;; =============================================================================
 
 
+(defn output-json
+  ([] (output-json nil))
+  ([opts]
+   (fn [data]
+     (let [{:keys [no-stacktrace? stacktrace-fonts]} opts
+           {:keys [level ?err #_vargs msg_ ?ns-str ?file hostname_
+                   timestamp_ ?line]} data]
+       (json/generate-string
+         (cond->
+           {:timestamp (force timestamp_)
+            :host      (force hostname_)
+            :level     (clojure.string/upper-case (name level))
+            :ns        (or ?ns-str ?file "?")
+            :line      (or ?line "?")
+            :msg       (json/parse-string (force msg_))}
+
+           (and (not no-stacktrace?) (some? ?err))
+           (merge {:stacktrace (timbre/stacktrace ?err)})))))))
+
 (defmacro log!
   "Log 'data' via timbre on a specific 'level' and with context 'logger', where 'id'
   should be a namespace'd keyword and 'data' is the information to log. If 'log-ctx'
@@ -107,7 +123,7 @@
          throwable# ~(first args)
          config#    (:config log-ctx#)
          log-data#  (merge (:data log-ctx#)
-                           (assoc ~data :millis (System/currentTimeMillis)))]
+                      (assoc ~data :millis (System/currentTimeMillis)))]
      (timbre/with-config
        config#
        (if (some? throwable#)
@@ -124,3 +140,25 @@
 (defmacro info [log-ctx id data & args] `(log! :info ~log-ctx ~id ~data ~@args))
 (defmacro warn [log-ctx id data & args] `(log! :warn ~log-ctx ~id ~data ~@args))
 (defmacro error [log-ctx id data & args] `(log! :error ~log-ctx ~id ~data ~@args))
+
+
+;; =============================================================================
+;; Loggers
+;; =============================================================================
+
+(defn timbre-logger
+  "Setup timbre logging with provided configuration."
+  [log-level appender filename]
+  {:config (configuration log-level appender filename)})
+
+
+(defn timbre-json-println-logger
+  [log-level & [{:keys [appenders filename]}]]
+  (let [app-configs (reduce (fn [m k]
+                              (merge m (appender-config k {:filename filename})))
+                      {}
+                      appenders)
+        config      (-> (configuration log-level)
+                      (assoc :output-fn (output-json))
+                      (update :appenders merge app-configs))]
+    {:config config}))
