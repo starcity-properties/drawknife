@@ -106,7 +106,12 @@
             :level     (clojure.string/upper-case (name level))
             :ns        (or ?ns-str ?file "?")
             :line      (or ?line "?")
-            :msg       (json/parse-string (force msg_))}
+            :msg       (let [msg (force msg_)]
+                         (try
+                           (json/parse-string msg)
+                           (catch Throwable _
+                             ;; If this is not JSON just return the string as is.
+                             msg)))}
 
            (and (not no-stacktrace?) (some? ?err))
            (merge {:stacktrace (timbre/stacktrace ?err)})))))))
